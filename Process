@@ -62,3 +62,39 @@ The model output can also help answer whether there is a relationship between th
 
 Given that we have indications that at least one of the predictors is associated with subscription, and based on the fact that channel here has a high p-value, we can consider removing channel from the model and see how the model fit changes (we are not going to run a variable selection procedure such as forward, backward or mixed selection in this example):
 
+# fit a linear model excluding the variable channel
+mod2 = lm(subscription ~ campaigntypes.c + vintage.c, data = newdata)
+summary(mod2)
+
+The model excluding channel has in fact improved our F-Statistic from 58.89 to 87.98 but no substantial improvement was achieved in residual standard error and adjusted R-square value. This is possibly due to the presence of outlier points in the data.
+
+# Let’s plot this last model’s residuals:
+plot(mod2, pch = 16, which = 1)
+
+Note how the residuals plot of this last model shows some important points still lying far away from the middle area of the graph.
+Let’s visualize a three-dimensional interactive graph with both predictors and the target variable and the linear fit from the last model:
+newdat <- expand.grid(campaigntype.c=seq(-35,45,by=5),vintage.c=seq(-25,70,by=5))
+newdat$pp <- predict(mod2,newdata=newdat)
+with(newdata,plot3d(campaigntype.c,vintage.c,subscription, col="blue", size=1, type="s", main="3D Linear Model Fit"))
+with(newdat,surface3d(unique(campaigntype.c),unique(vintage.c),pp,
+                      alpha=0.3,front="line", back="line"))
+                      
+No we see how this 3D view clearly highlights the pattern existent across campaigntype and vintage relative to subscription
+At this stage we could try a few different transformations on both the predictors and the response variable to see how this would improve the model fit. For now, let’s apply a logarithmic transformation with the log function on the subscription variable (the log function here transforms using the natural log. If base 10 is desired log10 is the function to be used). Also, we could try to square both predictors. Let’s apply these suggested transformations directly into the model function and see what happens with both the model fit and the model accuracy.
+
+# fit a model excluding the variable education,  log the subscription variable.
+mod3 = lm(log(subscription) ~ campaigntype.c + I(campaigntype.c^2) + vintage.c + I(vintage.c^2) , data=newdata)
+summary(mod3)
+# Let’s plot this last model’s residuals:
+plot(mod3, pch = 16, which = 1)
+
+By transforming both the predictors and the target variable, we achieve an improved model fit. Note how the adjusted R-square has jumped to 0.7545965. Most predictors’ p-values are significant. Here, the squared vintage.c predictor yields a weak p-value (maybe an indication that in the presence of other predictors, it is not relevant to include and we could exclude it from the model.)
+
+Let’s go on and remove the squared vintage.c variable from the model to see how it changes:
+# fit a model excluding the variable channel,  log the subscription variable.
+mod4 = lm(log(subscription) ~ campaigntypes.c + I(campaigntypes.c^2) + vintage.c , data=newdata)
+summary(mod4)
+# Plot model residuals.
+plot(mod4, pch=16, which=1)
+
+Note now that this updated model yields a much better R-square measure of 0.7490565, with all predictor p-values highly significant and improved F-Statistic value (101.5). The residuals plot also shows a randomly scattered plot indicating a relatively good fit given the transformations applied due to the non-linearity nature of the data.
