@@ -1,0 +1,64 @@
+## Our linear regression model includes multiple predictors although sometimes we do look at simple linear regression model to see if there is strong relationship between individual predictor and the response variable. 
+
+# load all packages needed and the dataset as well
+library(corrplot) # we will need corrplot 
+library(visreg) # this library will allow us to show multivariate graphs
+library(rgl)
+library(knitr)
+library(scatterplot3d) # this library will allow us to generate 3D graphs
+
+## Load the campaign data and clean the data
+# take a overview and summarize the data
+head(campaign)
+str(campaign)
+summary(campaign)
+
+# then let's clean the data by filling the missing values and nulls with 0
+campaign[is.na(campaign)] <- 0
+
+# as our model is multiple linear regression model and has more than one predictor, we will subset the data and isolate them from other variables 
+data = campaign[, c(1:4)]
+summary(data)
+# now the new data only includes the variables that we want to investigate. it is easy for us to plot matrix of all varaibles using plot function. 
+plot(data, pch = 16, col = "blue", main = "Matrix Scatterplot of Subscription, Channel, Campaign Types, Vintage")
+
+# Tha matrix plot allows us to vizualise the relationship among all variables in one single image.
+# for the multiple linear regression model, we want to solve the following equation:
+subscrition rate = B0 + B1 * Channel + B2 * Campaign Types + B3 * Vintage
+The model will estimate the value of the intercept (B0) and each predictor’s slope (B1) for channel, (B2) for campaign types and (B3) for vintage. The intercept is the average expected subscription rate for the average value across all predictors. The value for each slope estimate will be the average increase in subscription rate associated with a one-unit increase in each predictor value, holding the others constant. We want our model to fit a line or plane across the observed relationship in a way that the line/plane created is as close as possible to all data points.
+
+# then let's start by using lm function (Least Squares Approach) to fit linear models
+set.seed(123)
+#center predictors -  two reasons to center predictor variables in any time of regression analysis–linear, logistic, multilevel, etc.
+1. To lessen the correlation between a multiplicative term (interaction or polynomial term) and its component variables (the ones that were multiplied).
+2. To make interpretation of parameter estimates easier.
+channels.c = scale(data$channels, center = TRUE, scale = FALSE) # new variables will be centered to their mean
+campaigntypes.c = scale(data$campaigntypes, center = TRUE, scale = FALSE)
+vintage.c = scale(data$vintage, center = TRUE, scale = FALSE)
+
+# bind these new variables into dataset and display a summary
+new.c.vars = cbind(channels.c, campaigntypes.c, vintage.c)
+newdata = cbind(data, new.c.vars)
+names(newdata)[5:7] <- c("channels.c", "campaigntypes.c", "vintage.c")
+summary(newdata)
+
+# fit a linear model and run a summary of its results
+mod1 = lm(subscription ~ channels.c + campaigntypes.c + vintage.c, data = newdata)
+summary(mod1)
+These new variables were centered on their mean. This transformation was applied on each variable so we could have a meaningful interpretation of the intercept estimates. Centering allows us to say that the estimated subscription is 3% when we consider the channel, the campaign strategies(average number of touch points) and the average year of vintage from the dataset.
+
+Note also our Adjusted R-squared value (we’re now looking at adjusted R-square as a more appropriate metric of variability as the adjusted R-squared increases only if the new term added ends up improving the model more than would be expected by chance). In this model, we arrived in a larger R-squared number of 0.6322843 (compared to roughly 0.37 from our last simple linear regression exercise).
+
+Recall from our previous simple linear regression exmaple that our centered channel predictor variable had a significant p-value (close to zero). But from the multiple regression model output above, channel no longer displays a significant p-value. Here, channel represents the average effect while holding the other variables campaign types and vintage. From the matrix scatterplot shown above, we can see the pattern subscription rate takes when regressed on campaign type and vintage. Note how closely aligned their pattern is with each other. So in essence, when they are put together in the model, channel is no longer significant after adjusting for campaign types.  When we have two or more predictor variables strongly correlated, we face a problem of collinearity (the predictors are collinear).
+
+# now let's validate this situation witha correlation plot:
+newdatacor = cor(newdata[1:4]) 
+corrplot(newdatacor, method = "number") # plot a correlation graph
+
+The correlation matrix shown above highlights the situation we encoutered with the model output. Notice that the correlation between channel and campaign types is very high at 0.85. This reveals each sponsor's channel is strongly aligned to campaign types. So in essence, channel’s high p-value indicates that campaign types and vintage are related to subscription rate, but there is no evidence that channel is associated with subscription, at least not when these other two predictors are also considered in the model.
+
+
+The model output can also help answer whether there is a relationship between the response and the predictors used. We can use the value of our F-Statistic to test whether all our coefficients are equal to zero (testing for the null hypothesis which means). The F-Statistic value from our model is 58.89 on 3 and 98 degrees of freedom. So assuming that the number of data points is appropriate and given that the p-values returned are low, we have some evidence that at least one of the predictors is associated with subscription.
+
+Given that we have indications that at least one of the predictors is associated with subscription, and based on the fact that channel here has a high p-value, we can consider removing channel from the model and see how the model fit changes (we are not going to run a variable selection procedure such as forward, backward or mixed selection in this example):
+
